@@ -1,26 +1,28 @@
-import { HStack, Stack, Text } from '@chakra-ui/react'
-import { Settings } from '@typebot.io/schemas'
-import React from 'react'
-import { NumberInput } from '@/components/inputs'
-import { SwitchWithLabel } from '@/components/inputs/SwitchWithLabel'
-import { defaultSettings } from '@typebot.io/schemas/features/typebot/settings/constants'
-import { SwitchWithRelatedSettings } from '@/components/SwitchWithRelatedSettings'
-import { isDefined } from '@typebot.io/lib'
+import { SwitchWithRelatedSettings } from "@/components/SwitchWithRelatedSettings";
+import { NumberInput } from "@/components/inputs";
+import { SwitchWithLabel } from "@/components/inputs/SwitchWithLabel";
+import { HStack, Stack, Text } from "@chakra-ui/react";
+import { useTranslate } from "@tolgee/react";
+import { isDefined } from "@typebot.io/lib/utils";
+import { defaultSettings } from "@typebot.io/settings/constants";
+import type { Settings } from "@typebot.io/settings/schemas";
+import React from "react";
 
 type Props = {
-  typingEmulation: Settings['typingEmulation']
-  onUpdate: (typingEmulation: Settings['typingEmulation']) => void
-}
+  typingEmulation: Settings["typingEmulation"];
+  onUpdate: (typingEmulation: Settings["typingEmulation"]) => void;
+};
 
 export const TypingEmulationForm = ({ typingEmulation, onUpdate }: Props) => {
+  const { t } = useTranslate();
   const updateIsEnabled = (enabled: boolean) =>
     onUpdate({
       ...typingEmulation,
       enabled,
-    })
+    });
 
   const updateSpeed = (speed?: number) =>
-    onUpdate({ ...typingEmulation, speed })
+    onUpdate({ ...typingEmulation, speed });
 
   const updateMaxDelay = (maxDelay?: number) =>
     onUpdate({
@@ -28,28 +30,28 @@ export const TypingEmulationForm = ({ typingEmulation, onUpdate }: Props) => {
       maxDelay: isDefined(maxDelay)
         ? Math.max(Math.min(maxDelay, 5), 0)
         : undefined,
-    })
+    });
 
   const updateIsDisabledOnFirstMessage = (isDisabledOnFirstMessage: boolean) =>
     onUpdate({
       ...typingEmulation,
       isDisabledOnFirstMessage,
-    })
+    });
 
   const updateDelayBetweenBubbles = (delayBetweenBubbles?: number) =>
-    onUpdate({ ...typingEmulation, delayBetweenBubbles })
+    onUpdate({ ...typingEmulation, delayBetweenBubbles });
 
   return (
     <Stack spacing={6}>
       <SwitchWithRelatedSettings
-        label={'Typing emulation'}
+        label={t("settings.sideMenu.typing.emulation")}
         initialValue={
           typingEmulation?.enabled ?? defaultSettings.typingEmulation.enabled
         }
         onCheckChange={updateIsEnabled}
       >
         <NumberInput
-          label="Words per minutes:"
+          label={t("settings.sideMenu.typing.emulation.speed.label")}
           data-testid="speed"
           defaultValue={
             typingEmulation?.speed ?? defaultSettings.typingEmulation.speed
@@ -62,7 +64,7 @@ export const TypingEmulationForm = ({ typingEmulation, onUpdate }: Props) => {
         />
         <HStack>
           <NumberInput
-            label="Max delay:"
+            label={t("settings.sideMenu.typing.emulation.maxDelay.label")}
             data-testid="max-delay"
             defaultValue={
               typingEmulation?.maxDelay ??
@@ -75,12 +77,16 @@ export const TypingEmulationForm = ({ typingEmulation, onUpdate }: Props) => {
             direction="row"
             size="sm"
           />
-          <Text>seconds</Text>
+          <Text>{t("seconds")}</Text>
         </HStack>
 
         <SwitchWithLabel
-          label={'Disable on first message'}
-          moreInfoContent="When checked, typing emulation will be disabled for the first message sent by the bot."
+          label={t(
+            "settings.sideMenu.typing.emulation.disabledOnFirstMessage.label",
+          )}
+          moreInfoContent={t(
+            "settings.sideMenu.typing.emulation.disabledOnFirstMessage.tooltip",
+          )}
           onCheckChange={updateIsDisabledOnFirstMessage}
           initialValue={
             typingEmulation?.isDisabledOnFirstMessage ??
@@ -90,7 +96,7 @@ export const TypingEmulationForm = ({ typingEmulation, onUpdate }: Props) => {
       </SwitchWithRelatedSettings>
       <HStack>
         <NumberInput
-          label="Delay between messages:"
+          label={t("settings.sideMenu.typing.emulation.delayBetweenBubbles")}
           defaultValue={
             typingEmulation?.delayBetweenBubbles ??
             defaultSettings.typingEmulation.delayBetweenBubbles
@@ -98,13 +104,13 @@ export const TypingEmulationForm = ({ typingEmulation, onUpdate }: Props) => {
           withVariableButton={false}
           onValueChange={updateDelayBetweenBubbles}
           direction="row"
-          maxW={'100px'}
+          maxW={"100px"}
           min={0}
           max={5}
           size="sm"
         />
-        <Text>seconds</Text>
+        <Text>{t("seconds")}</Text>
       </HStack>
     </Stack>
-  )
-}
+  );
+};

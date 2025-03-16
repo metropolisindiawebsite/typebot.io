@@ -1,24 +1,25 @@
+import { CopyButton } from "@/components/CopyButton";
+import { EditIcon } from "@/components/icons";
 import {
-  HStack,
-  Tooltip,
-  EditablePreview,
-  EditableInput,
-  Text,
-  Editable,
   Button,
-  ButtonProps,
+  type ButtonProps,
+  Editable,
+  EditableInput,
+  EditablePreview,
+  HStack,
+  Text,
+  Tooltip,
   useEditableControls,
-} from '@chakra-ui/react'
-import { EditIcon } from '@/components/icons'
-import { CopyButton } from '@/components/CopyButton'
-import React, { useState } from 'react'
+} from "@chakra-ui/react";
+import { useTranslate } from "@tolgee/react";
+import React, { useState } from "react";
 
 type EditableUrlProps = {
-  hostname: string
-  pathname?: string
-  isValid: (newPathname: string) => Promise<boolean> | boolean
-  onPathnameChange: (pathname: string) => void
-}
+  hostname: string;
+  pathname?: string;
+  isValid: (newPathname: string) => Promise<boolean> | boolean;
+  onPathnameChange: (pathname: string) => void;
+};
 
 export const EditableUrl = ({
   hostname,
@@ -26,13 +27,14 @@ export const EditableUrl = ({
   isValid,
   onPathnameChange,
 }: EditableUrlProps) => {
-  const [value, setValue] = useState(pathname)
+  const { t } = useTranslate();
+  const [value, setValue] = useState(pathname);
 
   const handleSubmit = async (newPathname: string) => {
-    if (newPathname === pathname) return
-    if (await isValid(newPathname)) return onPathnameChange(newPathname)
-    setValue(pathname)
-  }
+    if (newPathname === pathname) return;
+    if (await isValid(newPathname)) return onPathnameChange(newPathname);
+    setValue(pathname);
+  };
 
   return (
     <Editable
@@ -43,8 +45,8 @@ export const EditableUrl = ({
       onSubmit={handleSubmit}
     >
       <HStack spacing={1}>
-        <Text>{hostname}/</Text>
-        <Tooltip label="Edit">
+        <Text flexShrink={0}>{hostname}/</Text>
+        <Tooltip label={t("edit")}>
           <EditablePreview
             mx={1}
             borderWidth="1px"
@@ -52,7 +54,7 @@ export const EditableUrl = ({
             rounded="md"
             cursor="text"
             display="flex"
-            fontWeight="semibold"
+            fontWeight="medium"
           />
         </Tooltip>
         <EditableInput px={2} />
@@ -60,18 +62,19 @@ export const EditableUrl = ({
 
       <HStack>
         <EditButton size="xs" />
-        <CopyButton size="xs" textToCopy={`${hostname}/${value ?? ''}`} />
+        <CopyButton size="xs" textToCopy={`${hostname}/${value ?? ""}`} />
       </HStack>
     </Editable>
-  )
-}
+  );
+};
 
 const EditButton = (props: ButtonProps) => {
-  const { isEditing, getEditButtonProps } = useEditableControls()
+  const { t } = useTranslate();
+  const { isEditing, getEditButtonProps } = useEditableControls();
 
   return isEditing ? null : (
     <Button leftIcon={<EditIcon />} {...props} {...getEditButtonProps()}>
-      Edit
+      {t("edit")}
     </Button>
-  )
-}
+  );
+};

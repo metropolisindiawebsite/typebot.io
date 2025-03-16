@@ -1,4 +1,13 @@
+import { DropdownList } from "@/components/DropdownList";
+import { MoreInfoTooltip } from "@/components/MoreInfoTooltip";
+import { SwitchWithRelatedSettings } from "@/components/SwitchWithRelatedSettings";
+import { SwitchWithLabel } from "@/components/inputs/SwitchWithLabel";
 import {
+  Accordion,
+  AccordionButton,
+  AccordionIcon,
+  AccordionItem,
+  AccordionPanel,
   FormControl,
   FormLabel,
   HStack,
@@ -6,29 +15,28 @@ import {
   Tag,
   Text,
   useColorModeValue,
-} from '@chakra-ui/react'
-import { Settings } from '@typebot.io/schemas'
-import React from 'react'
-import { isDefined } from '@typebot.io/lib'
-import { SwitchWithLabel } from '@/components/inputs/SwitchWithLabel'
-import { SwitchWithRelatedSettings } from '@/components/SwitchWithRelatedSettings'
-import { DropdownList } from '@/components/DropdownList'
-import { MoreInfoTooltip } from '@/components/MoreInfoTooltip'
+} from "@chakra-ui/react";
+import { T, useTranslate } from "@tolgee/react";
+import { isDefined } from "@typebot.io/lib/utils";
 import {
   defaultSettings,
   rememberUserStorages,
-} from '@typebot.io/schemas/features/typebot/settings/constants'
+} from "@typebot.io/settings/constants";
+import type { Settings, SystemMessages } from "@typebot.io/settings/schemas";
+import React from "react";
+import { SystemMessagesForm } from "./SystemMessagesForm";
 
 type Props = {
-  generalSettings: Settings['general'] | undefined
-  onGeneralSettingsChange: (generalSettings: Settings['general']) => void
-}
+  generalSettings: Settings["general"] | undefined;
+  onGeneralSettingsChange: (generalSettings: Settings["general"]) => void;
+};
 
 export const GeneralSettingsForm = ({
   generalSettings,
   onGeneralSettingsChange,
 }: Props) => {
-  const keyBg = useColorModeValue(undefined, 'gray.600')
+  const { t } = useTranslate();
+  const keyBg = useColorModeValue(undefined, "gray.600");
   const toggleRememberUser = (isEnabled: boolean) =>
     onGeneralSettingsChange({
       ...generalSettings,
@@ -36,24 +44,24 @@ export const GeneralSettingsForm = ({
         ...generalSettings?.rememberUser,
         isEnabled,
       },
-    })
+    });
 
   const handleInputPrefillChange = (isInputPrefillEnabled: boolean) =>
     onGeneralSettingsChange({
       ...generalSettings,
       isInputPrefillEnabled,
-    })
+    });
 
   const handleHideQueryParamsChange = (isHideQueryParamsEnabled: boolean) =>
     onGeneralSettingsChange({
       ...generalSettings,
       isHideQueryParamsEnabled,
-    })
+    });
 
   const updateRememberUserStorage = (
     storage: NonNullable<
-      NonNullable<Settings['general']>['rememberUser']
-    >['storage']
+      NonNullable<Settings["general"]>["rememberUser"]
+    >["storage"],
   ) =>
     onGeneralSettingsChange({
       ...generalSettings,
@@ -61,31 +69,38 @@ export const GeneralSettingsForm = ({
         ...generalSettings?.rememberUser,
         storage,
       },
-    })
+    });
+
+  const updateSystemMessages = (systemMessages: SystemMessages) => {
+    onGeneralSettingsChange({
+      ...generalSettings,
+      systemMessages,
+    });
+  };
 
   return (
     <Stack spacing={6}>
       <SwitchWithLabel
-        label="Prefill input"
+        label={t("settings.sideMenu.general.prefillInput")}
         initialValue={
           generalSettings?.isInputPrefillEnabled ??
           defaultSettings.general.isInputPrefillEnabled
         }
         onCheckChange={handleInputPrefillChange}
-        moreInfoContent="Inputs are automatically pre-filled whenever their associated variable has a value"
+        moreInfoContent={t("settings.sideMenu.general.prefillInput.tooltip")}
       />
       <SwitchWithLabel
-        label="Hide query params on bot start"
+        label={t("settings.sideMenu.general.hideQueryParams")}
         initialValue={
           generalSettings?.isHideQueryParamsEnabled ??
           defaultSettings.general.isHideQueryParamsEnabled
         }
         onCheckChange={handleHideQueryParamsChange}
-        moreInfoContent="If your URL contains query params, they will be automatically hidden when the bot starts."
+        moreInfoContent={t("settings.sideMenu.general.hideQueryParams.tooltip")}
       />
       <SwitchWithRelatedSettings
-        label={'Remember user'}
-        moreInfoContent="If enabled, the chat state will be restored if the user comes back after exiting."
+        label={t("settings.sideMenu.general.rememberUser")}
+        moreInfoContent={t("settings.sideMenu.general.rememberUser.tooltip")}
         initialValue={
           generalSettings?.rememberUser?.isEnabled ??
           (isDefined(generalSettings?.isNewResultOnRefreshEnabled)
@@ -96,34 +111,49 @@ export const GeneralSettingsForm = ({
       >
         <FormControl as={HStack} justifyContent="space-between">
           <FormLabel mb="0">
-            Storage:&nbsp;
+            {t("settings.sideMenu.general.rememberUser.storage")}{" "}
             <MoreInfoTooltip>
               <Stack>
                 <Text>
-                  Choose{' '}
-                  <Tag size="sm" bgColor={keyBg}>
-                    session
-                  </Tag>{' '}
-                  to remember the user as long as he does not closes the tab or
-                  the browser.
+                  <T
+                    keyName="settings.sideMenu.general.rememberUser.storage.session.tooltip"
+                    params={{
+                      tag: <Tag size="sm" bgColor={keyBg} />,
+                    }}
+                  />
                 </Text>
                 <Text>
-                  Choose{' '}
-                  <Tag size="sm" bgColor={keyBg}>
-                    local
-                  </Tag>{' '}
-                  to remember the user forever on the same device.
+                  <T
+                    keyName="settings.sideMenu.general.rememberUser.storage.local.tooltip"
+                    params={{
+                      tag: <Tag size="sm" bgColor={keyBg} />,
+                    }}
+                  />
                 </Text>
               </Stack>
             </MoreInfoTooltip>
           </FormLabel>
           <DropdownList
-            currentItem={generalSettings?.rememberUser?.storage ?? 'session'}
+            currentItem={generalSettings?.rememberUser?.storage ?? "session"}
             onItemSelect={updateRememberUserStorage}
             items={rememberUserStorages}
           ></DropdownList>
         </FormControl>
       </SwitchWithRelatedSettings>
+      <Accordion allowToggle>
+        <AccordionItem>
+          <AccordionButton justifyContent="space-between">
+            {t("settings.sideMenu.general.systemMessages")}
+            <AccordionIcon />
+          </AccordionButton>
+          <AccordionPanel>
+            <SystemMessagesForm
+              systemMessages={generalSettings?.systemMessages}
+              onSystemMessagesChange={updateSystemMessages}
+            />
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
     </Stack>
-  )
-}
+  );
+};

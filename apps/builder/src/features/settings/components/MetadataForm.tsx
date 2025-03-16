@@ -1,29 +1,30 @@
-import React from 'react'
-import { Settings } from '@typebot.io/schemas'
+import { ImageUploadContent } from "@/components/ImageUploadContent";
+import { MoreInfoTooltip } from "@/components/MoreInfoTooltip";
+import { TextInput, Textarea } from "@/components/inputs";
+import { CodeEditor } from "@/components/inputs/CodeEditor";
 import {
   FormLabel,
+  HStack,
+  Image,
   Popover,
+  PopoverContent,
   PopoverTrigger,
   Stack,
-  Image,
-  PopoverContent,
-  HStack,
   Text,
-} from '@chakra-ui/react'
-import { CodeEditor } from '@/components/inputs/CodeEditor'
-import { ImageUploadContent } from '@/components/ImageUploadContent'
-import { MoreInfoTooltip } from '@/components/MoreInfoTooltip'
-import { TextInput, Textarea } from '@/components/inputs'
-import { env } from '@typebot.io/env'
-import { defaultSettings } from '@typebot.io/schemas/features/typebot/settings/constants'
+} from "@chakra-ui/react";
+import { useTranslate } from "@tolgee/react";
+import { env } from "@typebot.io/env";
+import { defaultSettings } from "@typebot.io/settings/constants";
+import type { Settings } from "@typebot.io/settings/schemas";
+import React from "react";
 
 type Props = {
-  workspaceId: string
-  typebotId: string
-  typebotName: string
-  metadata: Settings['metadata']
-  onMetadataChange: (metadata: Settings['metadata']) => void
-}
+  workspaceId: string;
+  typebotId: string;
+  typebotName: string;
+  metadata: Settings["metadata"];
+  onMetadataChange: (metadata: Settings["metadata"]) => void;
+};
 
 export const MetadataForm = ({
   workspaceId,
@@ -32,32 +33,33 @@ export const MetadataForm = ({
   metadata,
   onMetadataChange,
 }: Props) => {
+  const { t } = useTranslate();
   const handleTitleChange = (title: string) =>
-    onMetadataChange({ ...metadata, title })
+    onMetadataChange({ ...metadata, title });
   const handleDescriptionChange = (description: string) =>
-    onMetadataChange({ ...metadata, description })
+    onMetadataChange({ ...metadata, description });
   const handleFavIconSubmit = (favIconUrl: string) =>
-    onMetadataChange({ ...metadata, favIconUrl })
+    onMetadataChange({ ...metadata, favIconUrl });
   const handleImageSubmit = (imageUrl: string) =>
-    onMetadataChange({ ...metadata, imageUrl })
+    onMetadataChange({ ...metadata, imageUrl });
   const handleGoogleTagManagerIdChange = (googleTagManagerId: string) =>
-    onMetadataChange({ ...metadata, googleTagManagerId })
+    onMetadataChange({ ...metadata, googleTagManagerId });
   const handleHeadCodeChange = (customHeadCode: string) =>
-    onMetadataChange({ ...metadata, customHeadCode })
+    onMetadataChange({ ...metadata, customHeadCode });
 
   const favIconUrl =
     metadata?.favIconUrl ??
-    defaultSettings.metadata.favIconUrl(env.NEXT_PUBLIC_VIEWER_URL[0])
+    defaultSettings.metadata.favIconUrl(env.NEXT_PUBLIC_VIEWER_URL[0]);
 
   const imageUrl =
     metadata?.imageUrl ??
-    defaultSettings.metadata.imageUrl(env.NEXT_PUBLIC_VIEWER_URL[0])
+    defaultSettings.metadata.imageUrl(env.NEXT_PUBLIC_VIEWER_URL[0]);
 
   return (
     <Stack spacing="6">
       <Stack>
         <FormLabel mb="0" htmlFor="icon">
-          Icon:
+          {t("settings.sideMenu.metadata.icon.label")}
         </FormLabel>
         <Popover isLazy placement="top">
           <PopoverTrigger>
@@ -66,7 +68,7 @@ export const MetadataForm = ({
               w="20px"
               alt="Fav icon"
               cursor="pointer"
-              _hover={{ filter: 'brightness(.9)' }}
+              _hover={{ filter: "brightness(.9)" }}
               transition="filter 200ms"
               rounded="md"
             />
@@ -76,11 +78,11 @@ export const MetadataForm = ({
               uploadFileProps={{
                 workspaceId,
                 typebotId,
-                fileName: 'favIcon',
+                fileName: "favIcon",
               }}
               defaultUrl={favIconUrl}
               onSubmit={handleFavIconSubmit}
-              excludedTabs={['giphy', 'unsplash', 'emoji']}
+              excludedTabs={["giphy", "unsplash", "emoji"]}
               imageSize="thumb"
             />
           </PopoverContent>
@@ -88,7 +90,7 @@ export const MetadataForm = ({
       </Stack>
       <Stack>
         <FormLabel mb="0" htmlFor="image">
-          Image:
+          {t("settings.sideMenu.metadata.image.label")}
         </FormLabel>
         <Popover isLazy placement="top">
           <PopoverTrigger>
@@ -96,7 +98,7 @@ export const MetadataForm = ({
               src={imageUrl}
               alt="Website image"
               cursor="pointer"
-              _hover={{ filter: 'brightness(.9)' }}
+              _hover={{ filter: "brightness(.9)" }}
               transition="filter 200ms"
               rounded="md"
             />
@@ -106,17 +108,17 @@ export const MetadataForm = ({
               uploadFileProps={{
                 workspaceId,
                 typebotId,
-                fileName: 'ogImage',
+                fileName: "ogImage",
               }}
               defaultUrl={imageUrl}
               onSubmit={handleImageSubmit}
-              excludedTabs={['giphy', 'icon', 'emoji']}
+              excludedTabs={["giphy", "icon", "emoji"]}
             />
           </PopoverContent>
         </Popover>
       </Stack>
       <TextInput
-        label="Title:"
+        label={t("settings.sideMenu.metadata.title.label")}
         defaultValue={metadata?.title ?? typebotName}
         onChange={handleTitleChange}
       />
@@ -125,21 +127,20 @@ export const MetadataForm = ({
           metadata?.description ?? defaultSettings.metadata.description
         }
         onChange={handleDescriptionChange}
-        label="Description:"
+        label={t("settings.sideMenu.metadata.description.label")}
       />
       <TextInput
         defaultValue={metadata?.googleTagManagerId}
         placeholder="GTM-XXXXXX"
         onChange={handleGoogleTagManagerIdChange}
         label="Google Tag Manager ID:"
-        moreInfoTooltip="Do not include it if you are embedding your typebot in an existing website. GTM should be installed in the parent website instead."
+        moreInfoTooltip={t("settings.sideMenu.metadata.gtm.tooltip")}
       />
       <Stack>
         <HStack as={FormLabel} mb="0" htmlFor="head">
-          <Text>Custom head code:</Text>
+          <Text>{t("settings.sideMenu.metadata.headCode.label")}</Text>
           <MoreInfoTooltip>
-            Will be pasted at the bottom of the header section, just above the
-            closing head tag. Only `meta` and `script` tags are allowed.
+            {t("settings.sideMenu.metadata.headCode.tooltip")}
           </MoreInfoTooltip>
         </HStack>
         <CodeEditor
@@ -151,5 +152,5 @@ export const MetadataForm = ({
         />
       </Stack>
     </Stack>
-  )
-}
+  );
+};

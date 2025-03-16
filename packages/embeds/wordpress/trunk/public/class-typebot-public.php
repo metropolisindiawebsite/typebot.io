@@ -1,10 +1,13 @@
 <?php
+
+define('TYPEBOT_DEFAULT_LIB_VERSION', '0.3');
+
 class Typebot_Public
 {
   public function __construct()
   {
     add_action('wp_head', array($this, 'parse_wp_user'));
-    add_action('wp_footer', array($this, 'typebot_script'));
+    add_action('wp_footer', array($this, 'initialize_typebot'), 100);
   }
 
   public function parse_wp_user()
@@ -38,79 +41,130 @@ class Typebot_Public
     $this->parse_wp_user();
   }
 
-  function typebot_script()
+  function initialize_typebot()
   {
-    $lib_version = get_option('lib_version') !== null && get_option('lib_version') !== ''  ? get_option('lib_version') : '0.2';
-    echo '<script type="module">import Typebot from "https://cdn.jsdelivr.net/npm/@typebot.io/js@'.$lib_version.'/dist/web.js";';
-    if (
-      get_option('excluded_pages') !== null &&
-      get_option('excluded_pages') !== ''
-    ) {
-      $paths = explode(',', get_option('excluded_pages'));
-      $arr_js = 'const typebotExcludePaths = [';
-      foreach ($paths as $path) {
-        $arr_js = $arr_js . '"' . $path . '",';
-      }
-      $arr_js = substr($arr_js, 0, -1) . '];';
-      echo $arr_js;
-    } else {
-      echo 'const typebotExcludePaths = null;';
-    }
-
-    if (get_option('init_snippet') && get_option('init_snippet') !== '') {
-      echo 'if(!typebotExcludePaths || typebotExcludePaths.every((path) => {
-          let [excludePath, excludeSearch] = path.trim().split("?");
-          const excludeSearchParams = excludeSearch ? new URLSearchParams(excludeSearch) : null; 
-					let windowPath = window.location.pathname;
-          let windowSearchParams = window.location.search.length > 0 ? new URLSearchParams(window.location.search) : null;
-					if (excludePath.endsWith("*")) {
-            if(excludeSearchParams){
-              if(!windowSearchParams) return true
-              return !windowPath.startsWith(excludePath.slice(0, -1)) || !Array.from(excludeSearchParams.keys()).every((key) => excludeSearchParams.get(key) === "*" || (excludeSearchParams.get(key) === windowSearchParams.get(key)));
-            }
-						return !windowPath.startsWith(excludePath.slice(0, -1));
-					}
-					if (excludePath.endsWith("/")) {
-						excludePath = excludePath.slice(0, -1);
-					}
-					if (windowPath.endsWith("/")) {
-						windowPath = windowPath.slice(0, -1);
-					}    
-          if(excludeSearchParams){
-            if(!windowSearchParams) return true
-            return windowPath !== excludePath || !Array.from(excludeSearchParams.keys()).every((key) => excludeSearchParams.get(key) === "*" || (excludeSearchParams.get(key) === windowSearchParams.get(key)));
-          } else {
-            return windowPath !== excludePath;
-          }
-				})) {
-          ' . get_option('init_snippet') . '
-          Typebot.setPrefilledVariables({ ...typebotWpUser });
-        }';
-    }
-    echo '</script>';
+    if (empty(get_option('init_snippet')) || $this->is_path_excluded(get_option('excluded_pages'))) return;
+    $lib_version = ($version = get_option('lib_version')) ? $version : TYPEBOT_DEFAULT_LIB_VERSION;
+    echo '<script type="module">
+    import Typebot from "https://cdn.jsdelivr.net/npm/@typebot.io/js@'.$lib_version.'/dist/web.js";'.
+      get_option('init_snippet').
+      'Typebot.setPrefilledVariables({ ...typebotWpUser });
+    </script>';
   }
 
-  public function add_typebot_container($attributes = [])
-  {
-    $lib_version = '0.2';
-    if(array_key_exists('lib_version', $attributes)) {
-      $lib_version = sanitize_text_field($attributes['lib_version']);
+  function is_path_excluded($excluded_paths) {
+    if (empty($excluded_paths)) return false;
+    
+    $current_path = $_SERVER['REQUEST_URI'];
+    $paths = explode(',', $excluded_paths);
+    
+    foreach ($paths as $path) {
+      $path = trim($path);
+      list($exclude_path, $exclude_search) = array_pad(explode('?', $path), 2, null);
+      
+      // Parse current URL
+      $current_parsed = parse_url($current_path);
+      $current_path_clean = rtrim($current_parsed['path'], '/');
+      $current_query = [];
+      if (isset($current_parsed['query'])) {
+        parse_str($current_parsed['query'], $current_query);
+      }
+      
+      // Handle wildcard paths
+      if (str_ends_with($exclude_path, '*')) {
+        $base_path = rtrim(substr($exclude_path, 0, -1), '/');
+        if (!str_starts_with($current_path_clean, $base_path)) {
+          continue;
+        }
+      } else {
+        $exclude_path = rtrim($exclude_path, '/');
+        if ($current_path_clean !== $exclude_path) {
+          continue;
+        }
+      }
+      
+      // Check query parameters if they exist
+      if ($exclude_search) {
+        parse_str($exclude_search, $exclude_query);
+        $matches = true;
+        
+        foreach ($exclude_query as $key => $value) {
+          if ($value === '*') {
+            if (!isset($current_query[$key])) {
+              $matches = false;
+              break;
+            }
+          } else if (!isset($current_query[$key]) || $current_query[$key] !== $value) {
+            $matches = false;
+            break;
+          }
+        }
+        
+        if ($matches) return true;
+      } else {
+        return true;
+      }
     }
-    $lib_url = "https://cdn.jsdelivr.net/npm/@typebot.io/js@". $lib_version ."/dist/web.js";
+    
+    return false;
+  }
+
+  public function add_typebot_container($attributes = []) {
+    $lib_version = TYPEBOT_DEFAULT_LIB_VERSION;
+    if (array_key_exists('lib_version', $attributes)) {
+      $lib_version = $attributes['lib_version'];
+      if (strlen($lib_version) > 10 || !preg_match('/^\d+\.\d+(\.\d+)?$/', $lib_version)) {
+          $lib_version = TYPEBOT_DEFAULT_LIB_VERSION;
+      } else {
+          $lib_version = sanitize_text_field($lib_version);
+      }
+    }
+    $lib_url = esc_url_raw("https://cdn.jsdelivr.net/npm/@typebot.io/js@". $lib_version ."/dist/web.js");
     $width = '100%';
     $height = '500px';
-    $api_host = 'https://typebot.io';
+    $api_host = 'https://typebot.co';
+    $ws_host = 'partykit.typebot.io';
     if (array_key_exists('width', $attributes)) {
-      $width = sanitize_text_field($attributes['width']);
+      $width = $attributes['width'];
+      if (strlen($width) > 10 || !preg_match('/^\d+(%|px)$/', $width)) {
+        $width = '100%';
+      } else {
+        $width = sanitize_text_field($width);
+      }
     }
     if (array_key_exists('height', $attributes)) {
-      $height = sanitize_text_field($attributes['height']);
+      $height = $attributes['height'];
+      if (strlen($height) > 10 || !preg_match('/^\d+(%|px)$/', $height)) {
+        $height = '500px';
+      } else {
+        $height = sanitize_text_field($height);
+      }
     }
     if (array_key_exists('typebot', $attributes)) {
-      $typebot = sanitize_text_field($attributes['typebot']);
+      $typebot = $attributes['typebot'];
+      if (strlen($typebot) > 50 || empty($typebot) || !preg_match('/^[a-zA-Z0-9_-]+$/', $typebot)) {
+        return;
+      } else {
+        $typebot = sanitize_text_field($typebot);
+      }
     }
     if (array_key_exists('host', $attributes)) {
-      $api_host = sanitize_text_field($attributes['host']);
+      $api_host = $attributes['host'];
+      // Limit the length and sanitize
+      if (strlen($api_host) > 100 || !filter_var($api_host, FILTER_VALIDATE_URL)) {
+        $api_host = 'https://typebot.co'; // fallback to default host
+      } else {
+        $api_host = sanitize_text_field($api_host);
+      }
+    }
+    if (array_key_exists('ws_host', $attributes)) {
+      $ws_host = $attributes['ws_host'];
+      // Limit the length and sanitize
+      if (strlen($ws_host) > 100 || !filter_var($ws_host, FILTER_VALIDATE_URL)) {
+        $ws_host = 'partykit.typebot.io'; // fallback to default host
+      } else {
+        $ws_host = sanitize_text_field($ws_host);
+      }
     }
     if (!$typebot) {
       return;
@@ -119,14 +173,11 @@ class Typebot_Public
     $id = $this->generateRandomString();
 
     $bot_initializer = '<script type="module">
-    import Typebot from "' . $lib_url . '"
-
+    import Typebot from "' . esc_url($lib_url) . '"
     const urlParams = new URLSearchParams(window.location.search);
     const queryParams = Object.fromEntries(urlParams.entries());
-
-    Typebot.initStandard({ apiHost: "' . $api_host . '", id: "' . $id . '", typebot: "' . $typebot . '", prefilledVariables: { ...window.typebotWpUser, ...queryParams } });</script>';
-
-    return  '<typebot-standard id="' . $id . '" style="width: ' . $width . '; height: ' . $height . ';"></typebot-standard>' . $bot_initializer;
+    Typebot.initStandard({ apiHost: "' . esc_js($api_host) . '", wsHost: "' . esc_js($ws_host) . '", id: "' . esc_js($id) . '", typebot: "' . esc_js($typebot) . '", prefilledVariables: { ...window.typebotWpUser, ...queryParams } });</script>';
+    return  '<typebot-standard id="' . esc_attr($id) . '" style="width: ' . esc_attr($width) . '; height: ' . esc_attr($height) . ';"></typebot-standard>' . $bot_initializer;
   }
 
   private function generateRandomString($length = 10)
@@ -142,4 +193,10 @@ class Typebot_Public
       $length
     );
   }
+}
+
+function custom_sanitize_text_field($str) {
+  $str = str_replace(array('"', "'", '\\'), '', $str);
+  $str = sanitize_text_field($str);
+  return $str;
 }

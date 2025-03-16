@@ -58,6 +58,9 @@ model User {
   sessions                    Session[]
   bannedIps                   BannedIp[]
   displayedInAppNotifications Json?
+  credentials                 UserCredentials[]
+  groupTitlesAutoGeneration   Json?
+  preferredLanguage           String?
 }
 
 model ApiToken {
@@ -98,6 +101,12 @@ model Workspace {
   isPastDue                     Boolean               @default(false)
   isVerified                    Boolean?
   themeTemplates                ThemeTemplate[]
+  chatsHardLimit                Int?
+  // TODO: remove
+  settings                      Json?
+  lastActivityAt                DateTime?
+  inactiveFirstEmailSentAt      DateTime?
+  inactiveSecondEmailSentAt     DateTime?
 }
 
 model MemberInWorkspace {
@@ -138,6 +147,17 @@ model Credentials {
   type        String
   iv          String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model UserCredentials {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  data      String   @db.Text
+  name      String
+  type      String
+  iv        String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -280,6 +300,7 @@ model Log {
   createdAt   DateTime @default(now())
   resultId    String
   status      String
+  context     String?
   description String
   details     String?
   result      Result   @relation(fields: [resultId], references: [id], onDelete: Cascade)
@@ -300,12 +321,13 @@ model Answer {
 }
 
 model AnswerV2 {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  blockId   String
-  content   String
-  resultId  String
-  result    Result   @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  id               Int      @id @default(autoincrement())
+  createdAt        DateTime @default(now())
+  blockId          String
+  content          String
+  attachedFileUrls Json?
+  resultId         String
+  result           Result   @relation(fields: [resultId], references: [id], onDelete: Cascade)
 
   @@index([blockId])
 }

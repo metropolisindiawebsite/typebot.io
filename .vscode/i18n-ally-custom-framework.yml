@@ -13,15 +13,15 @@ usageMatchRegex:
   # The following example shows how to detect `t("your.i18n.keys")`
   # the `{key}` will be placed by a proper keypath matching regex,
   # you can ignore it and use your own matching rules as well
-  - "[^\\w\\d]t\\([\\s\\n]*'({key})'"
+  - "[^\\w\\d]t\\([\\s\\n]*['\"]({key})['\"]"
   - 'keyName="({key})"'
 
 # An array of strings containing refactor templates.
 # The "$1" will be replaced by the keypath specified.
 # Optional: uncomment the following two lines to use
 
-refactorTemplates:
-  - t("$1")
+# refactorTemplates:
+#  - i18n.get("$1")
 
 # If set to true, only enables this custom framework (will disable all built-in frameworks)
 monopoly: true

@@ -1,44 +1,48 @@
-import { ClientSideActionContext } from '@/types'
-import { readDataStream } from '@/utils/ai/readDataStream'
-import { guessApiHost } from '@/utils/guessApiHost'
-import { isNotEmpty } from '@typebot.io/lib/utils'
-import { createUniqueId } from 'solid-js'
+import type { ClientSideActionContext } from "@/types";
+import { guessApiHost } from "@/utils/guessApiHost";
+import { processDataStream } from "@ai-sdk/ui-utils";
+import { parseUnknownClientError } from "@typebot.io/lib/parseUnknownClientError";
+import { isNotEmpty } from "@typebot.io/lib/utils";
+import type { LogInSession } from "@typebot.io/logs/schemas";
+import { createUniqueId } from "solid-js";
 
-let abortController: AbortController | null = null
-const secondsToWaitBeforeRetries = 3
-const maxRetryAttempts = 1
+let abortController: AbortController | null = null;
+const secondsToWaitBeforeRetries = 3;
+const maxRetryAttempts = 1;
 
 export const streamChat =
   (context: ClientSideActionContext & { retryAttempt?: number }) =>
   async ({
     messages,
     onMessageStream,
+    onError,
   }: {
     messages?: {
-      content?: string | undefined
-      role?: 'system' | 'user' | 'assistant' | undefined
-    }[]
-    onMessageStream?: (props: { id: string; message: string }) => void
-  }): Promise<{ message?: string; error?: object }> => {
+      content?: string | undefined;
+      role?: "system" | "user" | "assistant" | undefined;
+    }[];
+    onMessageStream?: (props: { id: string; message: string }) => void;
+    onError?: (error: LogInSession) => void;
+  }): Promise<{ message?: string; error?: LogInSession }> => {
     try {
-      abortController = new AbortController()
+      abortController = new AbortController();
 
-      const apiHost = context.apiHost
+      const apiHost = context.apiHost;
 
       const res = await fetch(
         (isNotEmpty(apiHost) ? apiHost : guessApiHost()) +
           `/api/v2/sessions/${context.sessionId}/streamMessage`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             messages,
           }),
           signal: abortController.signal,
-        }
-      )
+        },
+      );
 
       if (!res.ok) {
         if (
@@ -46,51 +50,60 @@ export const streamChat =
           (res.status === 403 || res.status === 500 || res.status === 503)
         ) {
           await new Promise((resolve) =>
-            setTimeout(resolve, secondsToWaitBeforeRetries * 1000)
-          )
+            setTimeout(resolve, secondsToWaitBeforeRetries * 1000),
+          );
           return streamChat({
             ...context,
             retryAttempt: (context.retryAttempt ?? 0) + 1,
-          })({ messages, onMessageStream })
+          })({ messages, onMessageStream });
         }
         return {
-          error: (await res.json()) || 'Failed to fetch the chat response.',
-        }
+          error: {
+            description: "Failed to fetch chat streaming",
+            details: await res.text(),
+            context: "While streaming chat",
+          },
+        };
       }
 
       if (!res.body) {
-        throw new Error('The response body is empty.')
+        return {
+          error: {
+            description: "The chat stream response body is empty",
+          },
+        };
       }
 
-      let message = ''
+      let message = "";
 
-      const reader = res.body.getReader()
+      const id = createUniqueId();
 
-      const id = createUniqueId()
+      await processDataStream({
+        stream: res.body,
+        onTextPart: async (text) => {
+          message += text;
+          if (onMessageStream) onMessageStream({ id, message });
+        },
+        onErrorPart: (error) => {
+          onError?.(JSON.parse(error) as LogInSession);
+        },
+      });
 
-      for await (const { type, value } of readDataStream(reader, {
-        isAborted: () => abortController === null,
-      })) {
-        if (type === 'text') {
-          message += value
-          if (onMessageStream) onMessageStream({ id, message })
-        }
-      }
+      abortController = null;
 
-      abortController = null
-
-      return { message }
+      return { message };
     } catch (err) {
-      console.error(err)
+      console.error(err);
       // Ignore abort errors as they are expected.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((err as any).name === 'AbortError') {
-        abortController = null
-        return { error: { message: 'Request aborted' } }
+      if ((err as any).name === "AbortError") {
+        abortController = null;
+        return { error: { description: "Request aborted" } };
       }
-
-      if (err instanceof Error) return { error: { message: err.message } }
-
-      return { error: { message: 'Failed to fetch the chat response.' } }
+      return {
+        error: await parseUnknownClientError({
+          err,
+          context: "While streaming chat",
+        }),
+      };
     }
-  }
+  };
